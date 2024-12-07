@@ -1,0 +1,5 @@
+LastRun.txt
+.cache
+*.spec
+build/
+dist/

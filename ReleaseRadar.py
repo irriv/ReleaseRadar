@@ -63,7 +63,7 @@ try:
         while keep_searching:
             results = sp.artist_albums(
                 artist_id,
-                album_type=album_type,
+                include_groups=album_type,
                 limit=max_track_fetch_limit,
                 offset=fetched_count
             )
@@ -158,8 +158,10 @@ try:
     for index, artist in enumerate(artists, start=1):
         formatted_index = str(index).zfill(artist_index_length)
         print(f'Checking releases from {formatted_index}/{artist_count} {artist["name"]}')
-        albums = fetch_releases(artist["id"], "album", run_date)
+        albums  = fetch_releases(artist["id"], "album",  run_date)
         singles = fetch_releases(artist["id"], "single", run_date)
+        # appearances  = fetch_releases(artist["id"], "appears_on",  run_date)
+        # compilations = fetch_releases(artist["id"], "compilation", run_date)
         add_tracks_to_playlist(albums + singles)
 
     # Write the current date as the new run date for future runs

@@ -18,28 +18,48 @@ try:
     redirect_uri = config["DEFAULT"]["redirect_uri"]
     playlist_id = config["DEFAULT"]["playlist_id"]
     scope = "user-library-read user-follow-read playlist-modify-public"  # Permissions needed for Spotify API
-    filename = "LastRun.txt"     # File to track the last run date
+    date_filename = "LastRun.txt"     # File to track the last run date
+    previous_tracks_filename = "PreviousTracks.txt" # File to track the previous run tracks
     max_artist_fetch_limit = 50  # Max number of artists to fetch in each request
     max_track_fetch_limit = 1    # Limit for fetching albums or singles per request
     max_add_limit = 100          # Max number of tracks to add in each batch to the playlist
 
     # Function to read the date of the last run from the 'LastRun.txt' file
     def read_date():
-        if os.path.exists(filename):
-            print(f"'{filename}' found.")
-            with open(filename, "r") as file:
+        if os.path.exists(date_filename):
+            print(f"'{date_filename}' found.")
+            with open(date_filename, "r") as file:
                 date_str = file.read()
         else:
-            print(f"'{filename}' not found.")
+            print(f"'{date_filename}' not found.")
             date_str = str(date.today())  # Default to today's date if no file exists
         return date_str
 
     # Function to write the current date to 'LastRun.txt' for tracking the next run date
     def write_date():
-        with open(filename, "w") as file:
+        with open(date_filename, "w") as file:
             current_date_str = str(date.today())
             file.write(current_date_str)
-        print(f"'{filename}' date updated to {current_date_str}.")
+        print(f"'{date_filename}' date updated to {current_date_str}.")
+        
+    # Function to read previous tracks from 'PreviousTracks.txt' file
+    def read_previous_tracks():
+        previous_tracks = set()
+        if os.path.exists(previous_tracks_filename):
+            print(f"'{previous_tracks_filename}' found.")
+            with open(previous_tracks_filename, "r") as file:
+                for line in file:
+                    previous_tracks.add(line.strip())
+        else:
+            print(f"'{previous_tracks_filename}' not found.")
+        return previous_tracks
+
+    # Function to write current tracks to 'PreviousTracks.txt'
+    def write_previous_tracks(all_tracks):
+        with open(previous_tracks_filename, "w") as file:
+            for track_id in all_tracks:
+                file.write(f"{track_id}\n")
+        print(f"'{previous_tracks_filename}' updated with current tracks.")
 
     # Function to fetch all followed artists
     def fetch_artists():
@@ -93,6 +113,9 @@ try:
                 if track["id"] in playlist_tracks:
                     print(f"  Already in playlist: {track_string}")  # Skip if track is already in the playlist
                     continue
+                if track["id"] in previous_tracks:
+                    print(f"  In playlist previously: {track_string}")  # Skip if track was in the playlist after previous run
+                    continue
                 if track["id"] not in added_tracks:
                     track_ids.append(track["id"])
                     added_tracks.add(track["id"])  # Track added to the set to avoid duplicates
@@ -118,7 +141,6 @@ try:
                 break
             offset += limit
             results = sp.playlist_tracks(playlist_id, offset=offset, limit=limit)
-
         return track_ids
 
     # Authentication using Spotipy's OAuth flow
@@ -137,6 +159,11 @@ try:
     print("Fetching current playlist tracks for filtering.")
     playlist_tracks = fetch_playlist_tracks(playlist_id)
     print(f"Current playlist tracks fetched ({len(playlist_tracks)}).")
+    
+    # Fetch the list of previous tracks
+    print("Fetching previous tracks for filtering.")
+    previous_tracks = read_previous_tracks()
+    print(f"Previous playlist tracks fetched ({len(previous_tracks)}).")
 
     # Retrieve the list of followed artists
     print("Retrieving all followed artists.")
@@ -163,6 +190,10 @@ try:
         # appearances  = fetch_releases(artist["id"], "appears_on",  run_date)
         # compilations = fetch_releases(artist["id"], "compilation", run_date)
         add_tracks_to_playlist(albums + singles)
+    
+    # Write the current tracks as previous tracks for the next run
+    all_tracks = added_tracks.union(playlist_tracks)
+    write_previous_tracks(all_tracks)
 
     # Write the current date as the new run date for future runs
     write_date()

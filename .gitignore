@@ -1,6 +1,9 @@
 LastRun.txt
 PreviousTracks.txt
 .cache
+token.json
+Backup/
 *.spec
 build/
 dist/
+*.bat
